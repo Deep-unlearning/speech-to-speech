@@ -29,6 +29,9 @@ from arguments_classes.mlx_audio_whisper_arguments import (
 from arguments_classes.parakeet_tdt_arguments import (
     ParakeetTDTSTTHandlerArguments,
 )
+from arguments_classes.cohere_transcribe_stt_arguments import (
+    CohereTranscribeSTTHandlerArguments,
+)
 from arguments_classes.melo_tts_arguments import MeloTTSHandlerArguments
 from arguments_classes.open_api_language_model_arguments import OpenApiLanguageModelHandlerArguments
 from arguments_classes.facebookmms_tts_arguments import FacebookMMSTTSHandlerArguments
@@ -93,6 +96,7 @@ def parse_arguments():
             FasterWhisperSTTHandlerArguments,
             MLXAudioWhisperSTTHandlerArguments,
             ParakeetTDTSTTHandlerArguments,
+            CohereTranscribeSTTHandlerArguments,
             LanguageModelHandlerArguments,
             OpenApiLanguageModelHandlerArguments,
             MeloTTSHandlerArguments,
@@ -194,6 +198,7 @@ def prepare_all_args(
     faster_whisper_stt_handler_kwargs,
     mlx_audio_whisper_stt_handler_kwargs,
     parakeet_tdt_stt_handler_kwargs,
+    cohere_transcribe_stt_handler_kwargs,
     language_model_handler_kwargs,
     open_api_language_model_handler_kwargs,
     melo_tts_handler_kwargs,
@@ -210,6 +215,7 @@ def prepare_all_args(
         paraformer_stt_handler_kwargs,
         mlx_audio_whisper_stt_handler_kwargs,
         parakeet_tdt_stt_handler_kwargs,
+        cohere_transcribe_stt_handler_kwargs,
         language_model_handler_kwargs,
         open_api_language_model_handler_kwargs,
         melo_tts_handler_kwargs,
@@ -225,6 +231,7 @@ def prepare_all_args(
     rename_args(paraformer_stt_handler_kwargs, "paraformer_stt")
     rename_args(mlx_audio_whisper_stt_handler_kwargs, "mlx_audio_whisper")
     rename_args(parakeet_tdt_stt_handler_kwargs, "parakeet_tdt")
+    rename_args(cohere_transcribe_stt_handler_kwargs, "cohere_transcribe_stt")
     rename_args(language_model_handler_kwargs, "lm")
     rename_args(open_api_language_model_handler_kwargs, "open_api")
     rename_args(melo_tts_handler_kwargs, "melo")
@@ -263,6 +270,7 @@ def build_pipeline(
     paraformer_stt_handler_kwargs,
     mlx_audio_whisper_stt_handler_kwargs,
     parakeet_tdt_stt_handler_kwargs,
+    cohere_transcribe_stt_handler_kwargs,
     language_model_handler_kwargs,
     open_api_language_model_handler_kwargs,
     melo_tts_handler_kwargs,
@@ -418,7 +426,7 @@ def build_pipeline(
     else:
         stt_dest = text_prompt_queue
 
-    stt = get_stt_handler(module_kwargs, stop_event, spoken_prompt_queue, stt_dest, whisper_stt_handler_kwargs, faster_whisper_stt_handler_kwargs, paraformer_stt_handler_kwargs, mlx_audio_whisper_stt_handler_kwargs, parakeet_tdt_stt_handler_kwargs)
+    stt = get_stt_handler(module_kwargs, stop_event, spoken_prompt_queue, stt_dest, whisper_stt_handler_kwargs, faster_whisper_stt_handler_kwargs, paraformer_stt_handler_kwargs, mlx_audio_whisper_stt_handler_kwargs, parakeet_tdt_stt_handler_kwargs, cohere_transcribe_stt_handler_kwargs)
 
     lm = get_llm_handler(module_kwargs, stop_event, text_prompt_queue, lm_response_queue, language_model_handler_kwargs, open_api_language_model_handler_kwargs)
 
@@ -439,7 +447,7 @@ def build_pipeline(
     return ThreadManager(pipeline_handlers)
 
 
-def get_stt_handler(module_kwargs, stop_event, spoken_prompt_queue, text_prompt_queue, whisper_stt_handler_kwargs, faster_whisper_stt_handler_kwargs, paraformer_stt_handler_kwargs, mlx_audio_whisper_stt_handler_kwargs, parakeet_tdt_stt_handler_kwargs):
+def get_stt_handler(module_kwargs, stop_event, spoken_prompt_queue, text_prompt_queue, whisper_stt_handler_kwargs, faster_whisper_stt_handler_kwargs, paraformer_stt_handler_kwargs, mlx_audio_whisper_stt_handler_kwargs, parakeet_tdt_stt_handler_kwargs, cohere_transcribe_stt_handler_kwargs):
     if module_kwargs.stt == "whisper":
         from STT.whisper_stt_handler import WhisperSTTHandler
         return WhisperSTTHandler(
@@ -499,8 +507,16 @@ def get_stt_handler(module_kwargs, stop_event, spoken_prompt_queue, text_prompt_
             queue_out=text_prompt_queue,
             setup_kwargs=setup_kwargs,
         )
+    elif module_kwargs.stt == "cohere-transcribe":
+        from STT.cohere_transcribe_handler import CohereTranscribeSTTHandler
+        return CohereTranscribeSTTHandler(
+            stop_event,
+            queue_in=spoken_prompt_queue,
+            queue_out=text_prompt_queue,
+            setup_kwargs=vars(cohere_transcribe_stt_handler_kwargs),
+        )
     else:
-        raise ValueError("The STT should be either whisper, whisper-mlx, mlx-audio-whisper, faster-whisper, parakeet-tdt, or paraformer.")
+        raise ValueError("The STT should be either whisper, whisper-mlx, mlx-audio-whisper, faster-whisper, parakeet-tdt, paraformer, or cohere-transcribe.")
 
 
 def get_llm_handler(
@@ -622,6 +638,7 @@ def main():
         faster_whisper_stt_handler_kwargs,
         mlx_audio_whisper_stt_handler_kwargs,
         parakeet_tdt_stt_handler_kwargs,
+        cohere_transcribe_stt_handler_kwargs,
         language_model_handler_kwargs,
         open_api_language_model_handler_kwargs,
         melo_tts_handler_kwargs,
@@ -641,6 +658,7 @@ def main():
         faster_whisper_stt_handler_kwargs,
         mlx_audio_whisper_stt_handler_kwargs,
         parakeet_tdt_stt_handler_kwargs,
+        cohere_transcribe_stt_handler_kwargs,
         language_model_handler_kwargs,
         open_api_language_model_handler_kwargs,
         melo_tts_handler_kwargs,
@@ -664,6 +682,7 @@ def main():
         paraformer_stt_handler_kwargs,
         mlx_audio_whisper_stt_handler_kwargs,
         parakeet_tdt_stt_handler_kwargs,
+        cohere_transcribe_stt_handler_kwargs,
         language_model_handler_kwargs,
         open_api_language_model_handler_kwargs,
         melo_tts_handler_kwargs,
