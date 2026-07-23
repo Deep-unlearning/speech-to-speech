@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11130f" />
+    <title>Desktop Pilot</title>
+    <link rel="stylesheet" href="desktop-control.css" />
+  </head>
+  <body>
+    <div class="ambient-grid" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="wordmark" href="/desktop-control.html"><span>DP</span> Desktop Pilot</a>
+      <div class="runtime-badge" id="runtime-badge" data-state="offline">
+        <i></i><span id="runtime-label">Checking local bridge</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Local vision + native pointer</p>
+        <h1>Your screen is<br /><em>the interface.</em></h1>
+        <p>
+          Share a display, speak a target, and let the local VLM inspect the
+          latest frame before moving the real macOS pointer.
+        </p>
+      </section>
+
+      <section class="console-shell">
+        <div class="screen-column">
+          <div class="screen-frame" id="screen-frame">
+            <video id="screen-preview" autoplay muted playsinline></video>
+            <div class="screen-empty" id="screen-empty">
+              <span class="screen-icon" aria-hidden="true"></span>
+              <strong>No display shared</strong>
+              <p>Choose your entire screen so coordinates match the real pointer.</p>
+            </div>
+            <div class="scan-sweep" aria-hidden="true"></div>
+            <div class="frame-status">
+              <span id="frame-resolution">No frame</span>
+              <span id="observation-age">Not observed</span>
+            </div>
+          </div>
+
+          <div class="transcript-panel" aria-live="polite">
+            <div class="section-title">
+              <span>Conversation</span>
+              <button id="clear-transcript" type="button">Clear</button>
+            </div>
+            <div class="transcript-feed" id="transcript-feed">
+              <p class="empty-copy">Voice and tool events will appear here.</p>
+            </div>
+          </div>
+        </div>
+
+        <aside class="control-rail">
+          <div class="rail-heading">
+            <p class="eyebrow">Control sequence</p>
+            <h2>Observe. Locate. Act.</h2>
+          </div>
+
+          <ol class="sequence-list">
+            <li data-step="screen"><span>01</span><div><strong>Share display</strong><small>Browser-granted visual input</small></div></li>
+            <li data-step="access"><span>02</span><div><strong>Allow pointer</strong><small>macOS Accessibility permission</small></div></li>
+            <li data-step="voice"><span>03</span><div><strong>Start voice</strong><small>Local STT, VLM, and speech</small></div></li>
+          </ol>
+
+          <div class="rail-actions">
+            <button class="action-button primary" id="share-screen" type="button">Share my screen</button>
+            <button class="action-button" id="request-access" type="button">Request Accessibility</button>
+          </div>
+
+          <label class="arm-control" for="arm-mouse">
+            <span><strong>Arm mouse + typing</strong><small>Required for native input tools</small></span>
+            <input id="arm-mouse" type="checkbox" disabled />
+            <i aria-hidden="true"></i>
+          </label>
+
+          <div class="safety-note">
+            <strong>Local safety boundary</strong>
+            <p>Pointer movement, one left click, and plain text are exposed. Enter, shortcuts, passwords, and automatic sending remain blocked.</p>
+          </div>
+
+          <div class="event-log" id="event-log">
+            <p class="event-empty">Waiting for setup.</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <div class="voice-bar" data-active="false">
+      <div>
+        <span id="voice-kicker">Desktop voice is off</span>
+        <strong id="voice-caption">Share a display to begin</strong>
+      </div>
+      <div class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <button id="voice-button" type="button" aria-label="Start desktop voice control">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 15.2a3.7 3.7 0 0 0 3.7-3.7V6A3.7 3.7 0 1 0 8.3 6v5.5a3.7 3.7 0 0 0 3.7 3.7Z" />
+          <path d="M5.8 10.8v.7a6.2 6.2 0 0 0 12.4 0v-.7M12 17.7V21M9.5 21h5" />
+        </svg>
+      </button>
+    </div>
+
+    <dialog id="error-dialog">
+      <div>
+        <p class="eyebrow">Desktop Pilot</p>
+        <h2>Action unavailable</h2>
+        <p id="error-message"></p>
+        <button id="error-close" type="button">Close</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="desktop-control.js"></script>
+  </body>
+</html>

@@ -41,21 +41,30 @@ the moment a slot is actually claimed (a grant), never while queued.
 """
 
 import asyncio
+import ipaddress
 import logging
 import os
+from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import auth
+import desktop_bridge
 import limiter
 
 logger = logging.getLogger("s2s.search")
 
 SERPER_KEY = os.environ.get("SERPER_API_KEY", "").strip()
+DESKTOP_CONTROL_ENABLED = os.environ.get("DESKTOP_CONTROL_ENABLED", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 # Speech-to-speech load balancer URL. When set, the browser POSTs /api/session
 # (which proxies <lb>/session here, server-side) and connects to the URL the LB
 # returns (the original flow). The LB address itself is never sent to the browser.
@@ -114,6 +123,30 @@ class SearchRequest(BaseModel):
     key: str | None = None
 
 
+class DesktopPointerRequest(BaseModel):
+    action: Literal["move", "click"]
+    x: int = Field(ge=0, le=1000)
+    y: int = Field(ge=0, le=1000)
+    capture_width: int | None = Field(default=None, ge=1, le=16384)
+    capture_height: int | None = Field(default=None, ge=1, le=16384)
+
+
+class DesktopTypeRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=500)
+
+
+def _require_local_desktop_request(request: Request) -> None:
+    host = request.client.host if request.client else ""
+    try:
+        is_loopback = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        is_loopback = False
+    if not is_loopback:
+        raise HTTPException(status_code=403, detail="Desktop control is localhost-only.")
+    if not DESKTOP_CONTROL_ENABLED:
+        raise HTTPException(status_code=404, detail="Desktop control is disabled.")
+
+
 @app.get("/api/config")
 def config():
     """Client bootstrap: whether web search is available, whether the deploy runs
@@ -128,7 +161,70 @@ def config():
         # browser dials it itself, and Settings shows it locked.
         "s2sUrl": SPEECH_TO_SPEECH_URL,
         "auth": AUTH_ENABLED,
+        "desktop": {
+            "enabled": DESKTOP_CONTROL_ENABLED,
+            "available": desktop_bridge.available(),
+            "trusted": desktop_bridge.accessibility_trusted(),
+        },
     }
+
+
+@app.get("/api/desktop/status")
+def desktop_status(request: Request):
+    _require_local_desktop_request(request)
+    return {
+        "enabled": True,
+        "available": desktop_bridge.available(),
+        "trusted": desktop_bridge.accessibility_trusted(),
+        "displays": desktop_bridge.active_displays(),
+    }
+
+
+@app.post("/api/desktop/request-access")
+def desktop_request_access(request: Request):
+    _require_local_desktop_request(request)
+    if not desktop_bridge.available():
+        raise HTTPException(status_code=503, detail="Quartz pointer control is unavailable.")
+    return {"trusted": desktop_bridge.accessibility_trusted(prompt=True)}
+
+
+@app.post("/api/desktop/pointer")
+async def desktop_pointer(req: DesktopPointerRequest, request: Request):
+    _require_local_desktop_request(request)
+    if not desktop_bridge.available():
+        raise HTTPException(status_code=503, detail="Quartz pointer control is unavailable.")
+    if not desktop_bridge.accessibility_trusted():
+        raise HTTPException(status_code=403, detail="macOS Accessibility permission is required.")
+    if (req.capture_width is None) != (req.capture_height is None):
+        raise HTTPException(status_code=400, detail="Capture width and height must be provided together.")
+    try:
+        return await asyncio.to_thread(
+            desktop_bridge.execute_pointer,
+            req.action,
+            req.x,
+            req.y,
+            req.capture_width,
+            req.capture_height,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/desktop/type")
+async def desktop_type(req: DesktopTypeRequest, request: Request):
+    _require_local_desktop_request(request)
+    if not desktop_bridge.available():
+        raise HTTPException(status_code=503, detail="Quartz keyboard control is unavailable.")
+    if not desktop_bridge.accessibility_trusted():
+        raise HTTPException(status_code=403, detail="macOS Accessibility permission is required.")
+    try:
+        return await asyncio.to_thread(desktop_bridge.execute_typing, req.text)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/me")

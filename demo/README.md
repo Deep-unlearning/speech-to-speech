@@ -59,6 +59,49 @@ Realtime **GA** protocol and plays back the assistant's audio as it arrives.
 > Browsers require **HTTPS or `localhost`** for `getUserMedia()` (mic + camera).
 > `127.0.0.1` and `localhost` both work; plain `http://192.168.x.y` does NOT.
 
+### Voice-controlled app demo
+
+Open <http://localhost:7860/voice-control.html> to try an app-control pattern
+similar to `openai/realtime-voice-component`, backed by this repository's local
+Realtime WebSocket server and TTS pipeline. The page exposes narrow app-owned
+tools for changing its theme, counter, selected panel, and process state. After
+each tool result, a ghost cursor highlights the affected control and the model
+generates a short spoken confirmation.
+
+The app remains the source of truth: `voice-control-state.mjs` validates and
+applies tool arguments, while `voice-control.js` sends the resulting state back
+as `function_call_output` and requests the speech response.
+
+### Desktop control demo (macOS)
+
+Open <http://localhost:7860/desktop-control.html> for an app-independent local
+desktop agent. The browser shares a user-selected display with the VLM, while a
+localhost-only Quartz bridge moves or left-clicks the real pointer. Start the
+demo server with `DESKTOP_CONTROL_ENABLED=1`, grant its Python process macOS
+Accessibility permission, share the entire display, and explicitly arm the
+mouse in the page.
+
+Run the speech backend with a remote vision model. This keeps the realtime
+speech orchestration, STT, and TTS local while moving screenshot reasoning and
+tool selection to Hugging Face Inference Providers:
+
+```bash
+export HF_TOKEN="$(hf auth token)"
+uv run speech-to-speech \
+  --mode realtime \
+  --device mps \
+  --stt parakeet-tdt \
+  --llm_backend chat-completions \
+  --responses_api_base_url https://router.huggingface.co/v1 \
+  --responses_api_api_key "$HF_TOKEN" \
+  --model_name Qwen/Qwen3-VL-235B-A22B-Instruct:novita \
+  --tts qwen3
+```
+
+Desktop control is deliberately narrower than full computer automation: it
+allows plain-text typing into a field the agent just clicked, but does not expose
+Enter, keyboard shortcuts, passwords, shell execution, or filesystem operations.
+
 Smoke-test the backend from the shell:
 
 ```bash

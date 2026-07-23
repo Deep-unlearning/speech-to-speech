@@ -192,13 +192,7 @@ class FunctionToolCall(BaseModel):
         self,
         function_tools: list[FunctionTool] | None = None,
     ) -> ResponseFunctionToolCall:
-        positional = {k for k in self.parameters if _POSITIONAL_RE.match(k)}
-        if positional:
-            logger.warning(
-                "Dropping positional arguments for '%s': %s",
-                self.function_name,
-                positional,
-            )
+        positional = [(k, v) for k, v in self.parameters.items() if _POSITIONAL_RE.match(k)]
         arguments = {k: v for k, v in self.parameters.items() if not _POSITIONAL_RE.match(k)}
 
         if function_tools is not None:
@@ -212,7 +206,25 @@ class FunctionToolCall(BaseModel):
 
             schema = tool.parameters if isinstance(tool.parameters, dict) else {}
             properties = schema.get("properties", {})
-            required = set(schema.get("required", []))
+            required_names = schema.get("required", [])
+            required = set(required_names)
+
+            # Small local models sometimes ignore the named-argument instruction
+            # and emit ``tool('value')``. Mapping is unambiguous when the tool has
+            # exactly one declared property and that property is required.
+            if (
+                len(positional) == 1
+                and len(properties) == 1
+                and len(required_names) == 1
+                and required_names[0] not in arguments
+            ):
+                argument_name = required_names[0]
+                arguments[argument_name] = positional.pop()[1]
+                logger.info(
+                    "Mapped positional argument to '%s.%s'",
+                    self.function_name,
+                    argument_name,
+                )
 
             undeclared = {k for k in arguments if k not in properties}
             if undeclared:
@@ -226,6 +238,13 @@ class FunctionToolCall(BaseModel):
             missing = required - set(arguments.keys())
             if missing:
                 raise ValueError(f"Missing required parameters for '{self.function_name}': {missing}")
+
+        if positional:
+            logger.warning(
+                "Dropping positional arguments for '%s': %s",
+                self.function_name,
+                {name for name, _ in positional},
+            )
 
         return ResponseFunctionToolCall(
             name=self.function_name,

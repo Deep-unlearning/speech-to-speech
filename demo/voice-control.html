@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3ead8" />
+    <title>Voice Control Room</title>
+    <script>if (new URLSearchParams(location.search).has("capture")) document.documentElement.classList.add("capture-mode");</script>
+    <link rel="stylesheet" href="voice-control.css" />
+  </head>
+  <body data-theme="ember">
+    <div class="page-grain" aria-hidden="true"></div>
+    <header class="masthead reveal">
+      <a class="brand" href="/voice-control.html" aria-label="Voice Control Room home">
+        <span class="brand-mark">VC</span>
+        <span>Control Room</span>
+      </a>
+      <div class="connection-pill" data-connection="offline">
+        <span class="connection-dot"></span>
+        <span id="connection-label">Offline</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero reveal">
+        <p class="eyebrow">App-owned tools. Local voice loop.</p>
+        <h1>Say it.<br /><em>See it change.</em></h1>
+        <p class="hero-copy">
+          Try "open the launch brief", "fill my name and company", or
+          "set the budget to scale". A ghost cursor shows each action before
+          the assistant confirms it aloud.
+        </p>
+      </section>
+
+      <section class="dashboard reveal" aria-label="Voice-controlled application">
+        <nav class="panel-tabs" aria-label="Application panels">
+          <button class="panel-tab active" data-panel-target="overview" type="button">Overview</button>
+          <button class="panel-tab" data-panel-target="activity" type="button">Activity</button>
+          <button class="panel-tab" data-panel-target="brief" type="button">Launch Brief</button>
+          <button class="panel-tab" data-panel-target="settings" type="button">Settings</button>
+        </nav>
+
+        <div class="panel active" data-panel="overview">
+          <article class="counter-card">
+            <div>
+              <p class="card-label">Signal count</p>
+              <p class="counter-value" id="counter-value">12</p>
+            </div>
+            <div class="counter-rings" aria-hidden="true"><span></span><span></span><span></span></div>
+          </article>
+
+          <article class="status-card">
+            <div class="status-heading">
+              <div>
+                <p class="card-label">Process state</p>
+                <p class="run-state" id="run-state">Ready</p>
+              </div>
+              <span class="state-beacon" aria-hidden="true"></span>
+            </div>
+            <div class="state-track" aria-hidden="true"><span id="state-track-fill"></span></div>
+            <div class="state-options"><span>Ready</span><span>Running</span><span>Paused</span></div>
+          </article>
+        </div>
+
+        <div class="panel" data-panel="activity">
+          <div class="panel-heading">
+            <div><p class="card-label">Action ledger</p><h2>What voice changed</h2></div>
+            <span class="ledger-count" id="ledger-count">0 actions</span>
+          </div>
+          <ol class="activity-list" id="activity-list">
+            <li class="activity-empty">Voice actions will appear here.</li>
+          </ol>
+        </div>
+
+        <div class="panel brief-panel" data-panel="brief">
+          <div class="brief-heading">
+            <span class="brief-index" aria-hidden="true">04</span>
+            <div class="brief-title-copy">
+              <p class="card-label">Voice-built intake</p>
+              <h2>Make something<br /><em>worth launching.</em></h2>
+            </div>
+            <div class="brief-state" id="brief-state" data-complete="false">
+              <i></i><span>Draft</span>
+            </div>
+          </div>
+
+          <div class="brief-progress" aria-live="polite">
+            <div class="progress-copy">
+              <span>Required progress</span>
+              <strong id="brief-progress-count">0 of 3 complete</strong>
+            </div>
+            <div class="progress-track" aria-hidden="true"><i id="brief-progress-fill"></i></div>
+            <div class="missing-fields" id="brief-missing-fields">
+              <span>Name</span><span>Email</span><span>Launch goal</span>
+            </div>
+          </div>
+
+          <div class="brief-layout">
+            <form class="brief-form" id="brief-form" novalidate>
+              <label class="field-shell" data-brief-target="name">
+                <span>Your name</span>
+                <input id="brief-name" name="name" type="text" maxlength="80" placeholder="Maya Chen" autocomplete="name" />
+              </label>
+              <label class="field-shell" data-brief-target="email">
+                <span>Email</span>
+                <input id="brief-email" name="email" type="email" maxlength="120" placeholder="maya@studio.co" autocomplete="email" />
+              </label>
+              <label class="field-shell field-wide" data-brief-target="company">
+                <span>Company or team</span>
+                <input id="brief-company" name="company" type="text" maxlength="100" placeholder="Northstar Studio" autocomplete="organization" />
+              </label>
+              <label class="field-shell field-wide" data-brief-target="goal">
+                <span>What are we launching?</span>
+                <textarea id="brief-goal" name="goal" maxlength="300" rows="3" placeholder="A tactile campaign for our new climate dashboard."></textarea>
+              </label>
+
+              <fieldset class="choice-group field-wide" data-brief-target="budget">
+                <legend>Working budget</legend>
+                <div class="choice-row">
+                  <label><input type="radio" name="budget" value="starter" /><span>Starter<small>$5-15k</small></span></label>
+                  <label><input type="radio" name="budget" value="growth" checked /><span>Growth<small>$15-50k</small></span></label>
+                  <label><input type="radio" name="budget" value="scale" /><span>Scale<small>$50k+</small></span></label>
+                </div>
+              </fieldset>
+
+              <div class="brief-options field-wide">
+                <label class="priority-toggle" data-brief-target="priority">
+                  <input id="brief-priority" type="checkbox" />
+                  <span><i></i><strong>High priority</strong><small>Move this brief to the front</small></span>
+                </label>
+                <label class="updates-toggle" data-brief-target="updates">
+                  <input id="brief-updates" type="checkbox" />
+                  <span><i></i><strong>Product updates</strong><small>Occasional launch notes</small></span>
+                </label>
+              </div>
+
+              <div class="brief-actions field-wide">
+                <button class="brief-reset" id="brief-reset" type="button">Reset</button>
+                <button class="brief-submit" id="brief-submit" type="submit"><span>Create launch brief</span><i>&nearr;</i></button>
+              </div>
+            </form>
+
+            <aside class="brief-receipt" id="brief-receipt">
+              <div class="receipt-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+              <div class="receipt-topline"><p class="card-label">Live brief</p><span>BRF / 004</span></div>
+              <div class="receipt-monogram" id="receipt-monogram">?</div>
+              <h3 id="receipt-title">Build it out loud.</h3>
+              <p id="receipt-copy">Try one natural command with several details:</p>
+              <blockquote id="receipt-quote">&ldquo;Set my name to Maya, company Northstar, budget to scale, and make it high priority.&rdquo;</blockquote>
+              <dl>
+                <div><dt>Company</dt><dd id="receipt-company">Not set</dd></div>
+                <div><dt>Budget</dt><dd id="receipt-budget">Growth</dd></div>
+                <div><dt>Priority</dt><dd id="receipt-priority">Normal</dd></div>
+              </dl>
+            </aside>
+          </div>
+        </div>
+
+        <div class="panel" data-panel="settings">
+          <div class="panel-heading">
+            <div><p class="card-label">Visual system</p><h2>Current appearance</h2></div>
+          </div>
+          <div class="theme-grid" aria-label="Available themes">
+            <button class="theme-swatch active" data-theme-target="ember" type="button">
+              <span class="swatch ember"></span><strong>Ember</strong><small>Warm and kinetic</small>
+            </button>
+            <button class="theme-swatch" data-theme-target="tide" type="button">
+              <span class="swatch tide"></span><strong>Tide</strong><small>Cool and precise</small>
+            </button>
+            <button class="theme-swatch" data-theme-target="meadow" type="button">
+              <span class="swatch meadow"></span><strong>Meadow</strong><small>Natural and calm</small>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="conversation reveal" aria-live="polite">
+        <div class="conversation-heading">
+          <p class="card-label">Live transcript</p>
+          <button id="clear-transcript" type="button">Clear</button>
+        </div>
+        <div class="transcript-feed" id="transcript-feed">
+          <p class="transcript-empty">Your conversation will appear here.</p>
+        </div>
+      </section>
+    </main>
+
+    <aside class="voice-dock reveal" aria-label="Voice controls">
+      <div class="dock-copy">
+        <span class="dock-kicker" id="voice-kicker">Voice control is off</span>
+        <strong id="voice-caption">Start listening</strong>
+      </div>
+      <div class="audio-bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+      <button class="voice-button" id="voice-button" type="button" aria-label="Start voice control">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 15.25a3.75 3.75 0 0 0 3.75-3.75V6a3.75 3.75 0 1 0-7.5 0v5.5A3.75 3.75 0 0 0 12 15.25Z" />
+          <path d="M5.75 10.75v.75a6.25 6.25 0 0 0 12.5 0v-.75M12 17.75V21M9.5 21h5" />
+        </svg>
+      </button>
+    </aside>
+
+    <div class="ghost-cursor" id="ghost-cursor" aria-hidden="true">
+      <svg viewBox="0 0 32 38">
+        <path d="M4 2.8 27.2 22l-11.1 1.9-5.7 10.2L4 2.8Z" />
+      </svg>
+      <span id="ghost-cursor-label">Voice action</span>
+    </div>
+
+    <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <dialog id="error-dialog">
+      <div class="dialog-inner">
+        <p class="card-label">Connection issue</p>
+        <h2>Voice control could not start.</h2>
+        <p id="error-message"></p>
+        <button id="error-close" type="button">Close</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="voice-control.js"></script>
+  </body>
+</html>

@@ -223,6 +223,20 @@ def _make_tool(name: str, properties: dict, required: list[str] | None = None) -
 
 
 class TestToRealtimeToolCall:
+    def test_single_positional_arg_maps_to_single_required_property(self):
+        fc = FunctionToolCall(
+            function_name="open_panel",
+            parameters={"__arg_0__": "settings"},
+            original_string="open_panel('settings')",
+        )
+        tool = _make_tool(
+            "open_panel",
+            {"panel": {"type": "string", "enum": ["overview", "activity", "settings"]}},
+            required=["panel"],
+        )
+        result = fc.to_realtime_function_tool_call([tool])
+        assert json.loads(result.arguments) == {"panel": "settings"}
+
     def test_positional_args_stripped_when_required_present(self):
         fc = FunctionToolCall(
             function_name="greet",
@@ -250,8 +264,8 @@ class TestToRealtimeToolCall:
     def test_raises_when_required_missing_after_strip(self):
         fc = FunctionToolCall(
             function_name="greet",
-            parameters={"__arg_0__": 1, "bogus": 2},
-            original_string="greet(1, bogus=2)",
+            parameters={"__arg_0__": 1, "__arg_1__": 2, "bogus": 3},
+            original_string="greet(1, 2, bogus=3)",
         )
         tool = _make_tool("greet", {"msg": {"type": "string"}}, required=["msg"])
         with pytest.raises(ValueError, match="Missing required"):

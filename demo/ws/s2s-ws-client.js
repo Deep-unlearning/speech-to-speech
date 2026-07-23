@@ -965,17 +965,29 @@ export class S2sWsRealtimeClient extends EventTarget {
     });
   }
 
+  /** Add current app-owned UI state to the conversation without requesting a response. */
+  sendSystemContext(text) {
+    if (!text) return;
+    this._send({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "system",
+        content: [{ type: "input_text", text }],
+      },
+    });
+  }
+
   /**
    * Ask the model to generate a response now (after feeding tool results).
    * Serialized: if a response is already in flight we queue this request and
    * replay it once the active response finishes, so we never trip the
    * backend's `conversation_already_has_active_response` guard.
    *
-   * @param {{ image?: string }} [opts] Optional `image` (a data URL) sent as a
-   *   user `input_image` immediately before this response.create — so the frame
-   *   travels with the create (and is deferred together with it if queued),
-   *   rather than being added to the conversation eagerly. Used by the camera
-   *   tool so the model sees the snapshot in the response it's about to speak.
+   * @param {{ image?: string, instructions?: string, toolChoice?: "auto" | "required" | "none", tools?: ToolDef[] }} [opts]
+   *   Optional image and per-response overrides. The image is sent immediately
+   *   before response.create and is deferred with it when another response owns
+   *   the slot.
    */
   requestResponse(opts = {}) {
     if (this._responseActive()) {
@@ -993,12 +1005,20 @@ export class S2sWsRealtimeClient extends EventTarget {
 
   /** Send a response.create immediately and arm the in-flight guard. Any image
    *  on the payload is added as user content right before the create.
-   *  @param {{ image?: string }} [opts] */
+   *  @param {{ image?: string, instructions?: string, toolChoice?: "auto" | "required" | "none", tools?: ToolDef[] }} [opts] */
   _createResponseNow(opts = {}) {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return;
     if (opts.image) this.sendUserImage(opts.image);
     this._createInFlight = true;
-    this._send({ type: "response.create" });
+    /** @type {Record<string, any>} */
+    const response = {};
+    if (opts.instructions) response.instructions = opts.instructions;
+    if (opts.toolChoice) response.tool_choice = opts.toolChoice;
+    if (opts.tools) response.tools = opts.tools;
+    this._send({
+      type: "response.create",
+      ...(Object.keys(response).length ? { response } : {}),
+    });
   }
 
   /** Replay one queued response.create if the slot is now free. Called on every
