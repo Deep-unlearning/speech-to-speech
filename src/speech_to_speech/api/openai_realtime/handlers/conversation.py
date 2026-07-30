@@ -23,6 +23,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_HERMES_MESSAGE_PREFIXES = (
+    "[HERMES RESULT",
+    "[HERMES PROGRESS",
+    "[HERMES NOTICE",
+)
+
 
 class ConversationHandler(RealtimeBaseHandler):
     """Owns conversation item injection and pipeline-to-protocol translation."""
@@ -61,6 +67,7 @@ class ConversationHandler(RealtimeBaseHandler):
 
         if not item:
             return []
+        self._log_hermes_message(item)
         st = self._state(conn_id)
         event = ConversationItemCreatedEvent(
             type="conversation.item.created",
@@ -70,6 +77,16 @@ class ConversationHandler(RealtimeBaseHandler):
         )
         st.last_item_id = item.id
         return [event]
+
+    @staticmethod
+    def _log_hermes_message(item: ConversationItem) -> None:
+        """Show safely prepared Hermes speech injections in the engine console."""
+        if getattr(item, "type", None) != "message":
+            return
+        for content in getattr(item, "content", None) or []:
+            text = getattr(content, "text", None)
+            if isinstance(text, str) and text.startswith(_HERMES_MESSAGE_PREFIXES):
+                logger.info("HERMES → S2S: %s", text)
 
     def flush_deferred_items(self, conn_id: str) -> list[ServerEvent]:
         """Apply items buffered during a response, in arrival order.
